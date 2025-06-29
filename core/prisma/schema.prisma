@@ -1,0 +1,119 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  username      String    @unique
+  passwordHash  String
+  firstName     String?
+  lastName      String?
+  role          UserRole  @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Progress tracking
+  conceptProgress ConceptProgress[]
+  competitions   Competition[]
+  achievements   Achievement[]
+  
+  // Social features
+  messages      Message[]
+  studyGroups   StudyGroupMember[]
+}
+
+enum UserRole {
+  ADMIN
+  MODERATOR
+  USER
+}
+
+model ConceptProgress {
+  id          String   @id @default(cuid())
+  userId      String
+  conceptId   String   // References concept ID in Dgraph
+  mastery     Float    // 0-1 scale
+  lastStudied DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+model Competition {
+  id          String   @id @default(cuid())
+  type        CompetitionType
+  userId      String
+  conceptId   String   // References concept ID in Dgraph
+  score       Float
+  startTime   DateTime
+  endTime     DateTime
+  createdAt   DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+enum CompetitionType {
+  FEYNMAN
+  PROBLEM_SOLVING
+  MULTIPLE_CHOICE
+}
+
+model Achievement {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String
+  description String
+  earnedAt    DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+model Message {
+  id          String   @id @default(cuid())
+  content     String
+  userId      String
+  groupId     String?
+  createdAt   DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id])
+  studyGroup  StudyGroup? @relation(fields: [groupId], references: [id])
+}
+
+model StudyGroup {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  members     StudyGroupMember[]
+  messages    Message[]
+}
+
+model StudyGroupMember {
+  userId      String
+  groupId     String
+  role        GroupRole @default(MEMBER)
+  joinedAt    DateTime  @default(now())
+  
+  user        User       @relation(fields: [userId], references: [id])
+  group       StudyGroup @relation(fields: [groupId], references: [id])
+  
+  @@id([userId, groupId])
+}
+
+enum GroupRole {
+  OWNER
+  MODERATOR
+  MEMBER
+} 
